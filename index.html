@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>药王孙思邈·康养养生热词关联图（交互详情版）</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: linear-gradient(135deg, #f5f0e6 0%, #ede4d0 50%, #e8dcc3 100%);
+    min-height: 100vh;
+    padding: 24px;
+  }
+  .container { max-width: 1500px; margin: 0 auto; }
+  header {
+    text-align: center;
+    padding: 28px 20px 18px;
+    background: linear-gradient(135deg, #7a1f1f 0%, #a03c28 100%);
+    border-radius: 14px;
+    color: #f7ecd7;
+    box-shadow: 0 6px 24px rgba(122,31,31,.25);
+    margin-bottom: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: "藥";
+    position: absolute;
+    right: 30px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 120px;
+    opacity: .08;
+    font-family: "KaiTi", serif;
+  }
+  header h1 { font-size: 30px; letter-spacing: 4px; font-family: "KaiTi", "STKaiti", serif; }
+  header p { margin-top: 10px; font-size: 14px; opacity: .85; letter-spacing: 1px; }
+  .panel {
+    background: #fffdf7;
+    border-radius: 14px;
+    box-shadow: 0 4px 18px rgba(120,90,40,.12);
+    padding: 14px;
+    margin-bottom: 18px;
+  }
+  #graph { width: 100%; height: 860px; cursor: pointer; }
+  .legend-bar {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    justify-content: center;
+    padding: 10px 6px 4px;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; color: #5a4632;
+    background: #f6efdf;
+    border: 1px solid #e3d5b8;
+    padding: 5px 12px; border-radius: 999px;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .tip-bar {
+    text-align: center; font-size: 13px; color: #8a6f4d;
+    padding: 8px 0 2px;
+  }
+  .tip-bar b { color: #a03c28; }
+
+  /* ── 详情页覆盖层 ── */
+  #detailView {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: linear-gradient(135deg, #f7f2e6 0%, #efe6cf 100%);
+    overflow-y: auto;
+    animation: fadeIn .28s ease;
+  }
+  #detailView.show { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(14px);} to { opacity: 1; transform: none;} }
+  .detail-wrap { max-width: 980px; margin: 0 auto; padding: 26px 22px 60px; }
+  .detail-topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 18px; gap: 10px; flex-wrap: wrap;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: none; cursor: pointer;
+    background: #7a1f1f; color: #f7ecd7;
+    padding: 9px 18px; border-radius: 999px;
+    font-size: 14px; letter-spacing: 1px;
+    transition: transform .15s, box-shadow .15s;
+    text-decoration: none;
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(122,31,31,.3); }
+  .btn.ghost { background: #fffdf7; color: #7a1f1f; border: 1px solid #d9c49a; }
+  .btn.blue { background: #2f5d8a; }
+  .btn.green { background: #3d6b5e; }
+  .crumb { font-size: 13px; color: #9a8465; margin-bottom: 6px; letter-spacing: 1px; }
+  .detail-title {
+    font-family: "KaiTi", "STKaiti", serif;
+    font-size: 38px; color: #7a1f1f; letter-spacing: 3px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  .badge {
+    font-family: "Microsoft YaHei", sans-serif;
+    font-size: 12px; color: #fff;
+    padding: 4px 12px; border-radius: 999px;
+    letter-spacing: 1px; vertical-align: middle;
+  }
+  .detail-brief {
+    margin-top: 12px; font-size: 15px; color: #5a4632; line-height: 2;
+    background: #fffdf7; border-radius: 12px; padding: 18px 22px;
+    box-shadow: 0 3px 12px rgba(120,90,40,.10);
+    border-left: 5px solid #c8842c;
+  }
+  .detail-section {
+    margin-top: 22px;
+    background: #fffdf7; border-radius: 12px; padding: 20px 22px;
+    box-shadow: 0 3px 12px rgba(120,90,40,.10);
+  }
+  .detail-section h2 {
+    font-size: 18px; color: #7a1f1f; font-family: "KaiTi", serif;
+    letter-spacing: 2px; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .detail-section h2::before { content: ""; width: 6px; height: 20px; background: #a03c28; border-radius: 3px; }
+  .detail-section p { font-size: 14px; color: #6b5844; line-height: 2; margin-bottom: 8px; }
+  .scene-card {
+    border: 1px solid #e8dcc0; border-radius: 10px;
+    padding: 12px 16px; margin-bottom: 10px;
+    background: linear-gradient(135deg, #fffdf7, #faf5e8);
+    transition: transform .15s;
+  }
+  .scene-card:hover { transform: translateX(4px); border-color: #c8842c; }
+  .scene-card .no {
+    display: inline-block; background: #3d6b5e; color: #fff;
+    font-size: 12px; padding: 2px 10px; border-radius: 999px; margin-right: 8px;
+  }
+  .scene-card .nm { font-weight: bold; color: #33463f; font-size: 14px; }
+  .scene-card .ds { font-size: 13px; color: #7a6a52; margin-top: 6px; line-height: 1.8; }
+  .scene-card .cat { font-size: 12px; color: #a68a5b; margin-top: 4px; }
+  .rel-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .rel-chip {
+    cursor: pointer; font-size: 13px;
+    padding: 7px 16px; border-radius: 999px;
+    border: 1px solid #d9c49a; background: #f9f3e3; color: #6b4f2a;
+    transition: all .15s;
+  }
+  .rel-chip:hover { background: #7a1f1f; color: #f7ecd7; transform: translateY(-2px); }
+  .ext-links { display: flex; flex-wrap: wrap; gap: 10px; }
+  .kv { display: grid; grid-template-columns: 90px 1fr; gap: 6px 14px; font-size: 14px; color: #6b5844; }
+  .kv b { color: #7a1f1f; }
+
+  /* ── 索引搜索 ── */
+  #indexPanel {
+    position: fixed; right: 22px; top: 90px; z-index: 60;
+    width: 230px; max-height: 62vh;
+    background: #fffdf7; border-radius: 12px;
+    box-shadow: 0 6px 22px rgba(120,90,40,.22);
+    padding: 12px; display: flex; flex-direction: column;
+    border: 1px solid #e3d5b8;
+  }
+  #indexPanel h4 { font-size: 13px; color: #7a1f1f; margin-bottom: 8px; letter-spacing: 1px; }
+  #searchBox {
+    width: 100%; padding: 7px 12px; font-size: 13px;
+    border: 1px solid #d9c49a; border-radius: 8px; outline: none;
+    background: #fbf7ec; color: #5a4632; margin-bottom: 8px;
+  }
+  #indexList { overflow-y: auto; flex: 1; }
+  .idx-item {
+    font-size: 13px; color: #6b5844; padding: 6px 8px;
+    border-radius: 6px; cursor: pointer; line-height: 1.5;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .idx-item:hover { background: #f2e8d2; color: #7a1f1f; }
+  .idx-item .dot { flex: none; }
+  @media (max-width: 900px) { #indexPanel { display: none; } }
+
+  /* ── 扫码预览卡片 ── */
+  #qrCard {
+    position: fixed; left: 22px; bottom: 22px; z-index: 60;
+    background: #fffdf7; border-radius: 12px;
+    box-shadow: 0 6px 22px rgba(120,90,40,.22);
+    border: 1px solid #e3d5b8;
+    padding: 12px 14px; text-align: center;
+    transition: transform .2s, box-shadow .2s;
+    cursor: default;
+  }
+  #qrCard:hover { transform: translateY(-4px); box-shadow: 0 10px 28px rgba(120,90,40,.3); }
+  #qrCard img { width: 108px; height: 108px; display: block; }
+  #qrCard .cap { font-size: 12px; color: #7a1f1f; margin-top: 6px; letter-spacing: 1px; font-weight: bold; }
+  @media (max-width: 900px) { #qrCard { display: none; } }
+
+  footer { text-align: center; color: #9a8465; font-size: 12px; padding: 10px 0 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>药王孙思邈 · 康养养生热词关联图</h1>
+    <p>基于《铜川市数据要素场景机会清单（非遗领域 · 2026年10月）》研读提炼 · 交互详情版</p>
+  </header>
+
+  <div class="panel">
+    <div id="graph"></div>
+    <div class="tip-bar">💡 <b>单击节点</b>跳转该热词详情页（含场景溯源与外部链接） · 拖拽调整布局 · 滚轮缩放 · 右侧索引可搜索直达</div>
+    <div class="legend-bar">
+      <span class="chip"><span class="dot" style="background:#7a1f1f"></span>核心主题</span>
+      <span class="chip"><span class="dot" style="background:#c8842c"></span>养生知识体系</span>
+      <span class="chip"><span class="dot" style="background:#3d6b5e"></span>数据要素供给</span>
+      <span class="chip"><span class="dot" style="background:#2f5d8a"></span>AI智能服务</span>
+      <span class="chip"><span class="dot" style="background:#8a5a9e"></span>文旅康养场景</span>
+      <span class="chip"><span class="dot" style="background:#b0574a"></span>教育传承</span>
+      <span class="chip"><span class="dot" style="background:#6b8e3d"></span>产业带动</span>
+    </div>
+  </div>
+
+  <footer>数据来源：铜川市数据要素场景机会清单（非遗领域-10.15） · 点击节点查看详情</footer>
+</div>
+
+<!-- 扫码预览卡片 -->
+<div id="qrCard">
+  <img src="data:image/png;base64,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" alt="扫码预览二维码">
+  <div class="cap">扫码手机预览</div>
+</div>
+
+<!-- 热词索引搜索面板 -->
+<div id="indexPanel">
+  <h4>热词索引（点击直达详情）</h4>
+  <input id="searchBox" type="text" placeholder="搜索热词…">
+  <div id="indexList"></div>
+</div>
+
+<!-- 详情页覆盖层 -->
+<div id="detailView">
+  <div class="detail-wrap">
+    <div class="detail-topbar">
+      <button class="btn" onclick="closeDetail()">← 返回关联图</button>
+      <div>
+        <button class="btn ghost" onclick="historyBack()">⇦ 上一个</button>
+        <button class="btn ghost" onclick="copyLink()">🔗 复制本页链接</button>
+      </div>
+    </div>
+    <div class="crumb" id="dCrumb"></div>
+    <div class="detail-title">
+      <span id="dTitle"></span>
+      <span class="badge" id="dBadge"></span>
+    </div>
+    <div class="detail-brief" id="dBrief"></div>
+    <div class="detail-section" id="dMoreSec" style="display:none">
+      <h2>详细解读</h2>
+      <div id="dMore"></div>
+    </div>
+    <div class="detail-section" id="dSceneSec" style="display:none">
+      <h2>清单场景溯源</h2>
+      <div id="dScenes"></div>
+    </div>
+    <div class="detail-section">
+      <h2>相关热词（点击继续跳转）</h2>
+      <div class="rel-chips" id="dRelated"></div>
+    </div>
+    <div class="detail-section">
+      <h2>外部资源跳转</h2>
+      <div class="ext-links" id="dExt"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════ 清单40场景全量字典 ══════════════ */
+const scenes = {
+  '01': { cat:'一、数据资源供给类', name:'非遗传承人数字档案数据集', desc:'以轻量化方式采集传承人口述史、技艺流程与作品影像，形成一人一档的数字档案数据集。' },
+  '02': { cat:'一、数据资源供给类', name:'非遗技艺动作捕捉数据集', desc:'对耀瓷拉坯刻花、剪纸运剪等核心技艺进行动作捕捉，建立标准化技艺动作数据集。' },
+  '05': { cat:'一、数据资源供给类', name:'孙思邈养生知识图谱数据集', desc:'结构化整理养生方剂、食疗方案与经络穴位知识，构建中医药养生知识图谱数据集。' },
+  '07': { cat:'二、数据确权与流通类', name:'非遗数据知识产权登记服务', desc:'为加工形成的非遗数据集提供确权登记、合规存证与价值评估服务。' },
+  '08': { cat:'二、数据确权与流通类', name:'铜川非遗可信数据空间', desc:'搭建非遗数据可信流通空间，实现授权访问、脱敏处理与"可用不可见"流通。' },
+  '09': { cat:'二、数据确权与流通类', name:'非遗数据产品交易专区', desc:'在数据交易平台开设非遗专区，推动数据集、API等数据产品挂牌与供需对接。' },
+  '10': { cat:'二、数据确权与流通类', name:'非遗数字版权授权结算平台', desc:'线上办理纹样、影像、音乐等数字版权授权，实现收益分成自动结算。' },
+  '11': { cat:'二、数据确权与流通类', name:'非遗数据资产入表服务', desc:'为非遗数据资产提供盘点、评估与入表咨询服务，盘活数据资产价值。' },
+  '12': { cat:'二、数据确权与流通类', name:'非遗开放素材包', desc:'将可开放使用的纹样与图案打包，向教育、社区及非商业用途免费或低价开放。' },
+  '13': { cat:'三、数据与AI能力类', name:'耀州窑文化智能问答助手', desc:'基于耀瓷历史与工艺知识库，提供多轮问答、图片识器与语音讲解智能服务。' },
+  '15': { cat:'三、数据与AI能力类', name:'药王养生智能顾问', desc:'提供体质辨识、节气养生、食疗药膳与穴位按摩指导的个性化养生服务。' },
+  '18': { cat:'三、数据与AI能力类', name:'非遗传承人数字人', desc:'采集传承人声纹与形象生成可交互数字人，提供7×24小时非遗讲解互动。' },
+  '19': { cat:'四、数字文旅与全民共享类', name:'"铜川非遗"微信小程序', desc:'一站式非遗体验入口，整合资讯、智能问答、文创商城、活动报名与打卡集章。' },
+  '20': { cat:'四、数字文旅与全民共享类', name:'非遗线上数字博物馆', desc:'建设3D／VR线上展厅，展示耀瓷、剪纸、中医药精品，支持虚拟漫游与语音讲解。' },
+  '21': { cat:'四、数字文旅与全民共享类', name:'非遗有声故事库', desc:'由传承人讲述非遗故事与技艺渊源，制作系列音频，适配通勤、睡前等收听场景。' },
+  '22': { cat:'四、数字文旅与全民共享类', name:'非遗数字表情包与壁纸', desc:'基于耀瓷纹样、剪纸与药王IP设计表情包和壁纸，实现非遗轻量化传播。' },
+  '23': { cat:'四、数字文旅与全民共享类', name:'非遗城市AR打卡地图', desc:'在药王山、陈炉古镇等点位布设AR打卡点，扫码触发数字内容与打卡徽章。' },
+  '24': { cat:'四、数字文旅与全民共享类', name:'铜川非遗数字地图', desc:'标注非遗工坊、传承人工作室与体验空间，支持查询、预约与导览跳转。' },
+  '25': { cat:'四、数字文旅与全民共享类', name:'非遗社区文化角', desc:'在社区、图书馆、交通枢纽植入非遗展示墙与数字互动屏，推动非遗进基层。' },
+  '27': { cat:'五、就业与产业带动类', name:'非遗电商直播培训基地', desc:'培训本地青年成为非遗主播、短视频创作者与电商运营人员，孵化直播账号。' },
+  '28': { cat:'五、就业与产业带动类', name:'非遗活态传承直播季', desc:'每月举办传承人直播授艺活动并沉淀教学视频，常态化传播非遗技艺。' },
+  '29': { cat:'五、就业与产业带动类', name:'非遗研学导师认证计划', desc:'培训导游、教师、大学生成为非遗研学导师，认证后承接研学团队接待。' },
+  '30': { cat:'五、就业与产业带动类', name:'非遗社区工坊', desc:'在社区设立剪纸、刺绣、面花工坊，面向留守妇女、残疾人开展就业培训与订单生产。' },
+  '31': { cat:'五、就业与产业带动类', name:'非遗数据标注灵活就业', desc:'将非遗图片标注、音频转写等任务开放给本地居民与学生，按件计酬。' },
+  '32': { cat:'五、就业与产业带动类', name:'非遗民宿管家培训', desc:'培训民宿从业者融入陶艺体验、养生茶饮等非遗服务，打造非遗主题民宿。' },
+  '33': { cat:'五、就业与产业带动类', name:'非遗伴手礼代加工联盟', desc:'组织本地小微企业、手工作坊承接非遗文创代加工订单，形成产业配套。' },
+  '34': { cat:'五、就业与产业带动类', name:'"耀瓷工匠"数字技能微课包', desc:'面向非遗工坊从业者开发短视频微课，提升智能体工具应用与电商运营能力。' },
+  '35': { cat:'六、教育应用类', name:'非遗进校园标准化课程包', desc:'按学段开发剪纸、陶艺、中医药等课程包，含教案、课件、材料与评价标准。' },
+  '36': { cat:'六、教育应用类', name:'非遗AI教学助手', desc:'辅助教师备课、课堂答疑与学生作品点评，减轻备课负担并提升教学效果。' },
+  '37': { cat:'六、教育应用类', name:'非遗学生创作大赛与作品展示平台', desc:'每年举办中小学生非遗创作大赛，并线上展示学生优秀非遗数字作品。' },
+  '38': { cat:'六、教育应用类', name:'非遗研学实践基地', desc:'打造陈炉古镇陶艺、药王山中医药、宜君剪纸三条研学线路与配套课程。' },
+  '39': { cat:'六、教育应用类', name:'非遗互动电子教材', desc:'开发适配平板教学的互动电子教材，含视频演示、动画讲解与虚拟体验。' },
+  '40': { cat:'六、教育应用类', name:'非遗AR知识卡片互动教具', desc:'扫描实体卡片即可观看纹样刻花、剪纸分解动效，配套小学非遗课堂教学。' }
+};
+
+/* ══════════════ 重点热词深度解读 ══════════════ */
+const moreDetails = {
+  '药王孙思邈\n康养养生': [
+    '孙思邈（541—682），唐代医学家，被尊为"药王"，长期隐居铜川药王山行医著述，著有《备急千金要方》《千金翼方》，提出"大医精诚"医德思想与系统的养生学理论，是中国康养文化的重要源头。',
+    '在本清单中，药王孙思邈是唯一贯穿"数据资源—AI服务—文旅场景—教育传承—产业带动"全链条的人物IP：场景05以其养生知识构建知识图谱，场景15以其名义提供AI养生服务，场景23/38以药王山为空间载体，场景22/32衍生IP文创与康养民宿，构成完整的"药王康养数据要素生态"。',
+    '本关联图以"药王孙思邈·康养养生"为核心，将清单40个场景中与其直接相关的约20个场景解构为6大热词簇、80个热词节点，并补充千金方、大医精诚等文化延伸词，呈现从文化资源到数据资产的完整价值转化路径。'
+  ],
+  '孙思邈养生\n知识图谱': [
+    '知识图谱是本清单数据资源供给类的05号场景，也是全部40个场景中唯一以人物IP命名的数据集，足见药王养生知识在铜川非遗数据要素化中的核心地位。',
+    '建设内容包括三大知识域：①养生方剂——孙思邈著作中的经典方剂的组成、功效、适用人群结构化；②食疗方案——药膳食疗的食材配伍、时令宜忌；③经络穴位——穴位定位、主治、按摩手法的标准化描述。',
+    '作为上游数据资产，它向下游多方输出：为场景15药王养生智能顾问提供知识底座，经场景07确权登记、场景08可信流通、场景09挂牌交易实现资产化，还可通过API形式被小程序、数字博物馆等调用，是"数据要素×康养"的典型范式。'
+  ],
+  '药王养生\n智能顾问': [
+    '场景15"药王养生智能顾问"是AI能力类场景中与药王IP直接对应的核心应用，服务主线为：体质辨识→节气养生→食疗药膳→穴位按摩。',
+    '其运行逻辑是"知识图谱+大模型"：底层调用场景05的孙思邈养生知识图谱保证内容权威性，上层通过多轮问答理解用户体质与需求，输出个性化的养生方案，实现"千人千方"。',
+    '该顾问可嵌入场景19微信小程序作为常驻服务入口，也可与场景18传承人数字人结合，以数字人形象进行语音化养生讲解，形成7×24小时在线的"AI药王"。'
+  ],
+  '药王山': [
+    '药王山位于铜川市耀州区，是孙思邈隐居行医之地，保存有药王庙、摩崖石刻、碑林等遗存，是国家文物保护单位与中医药文化朝圣地。',
+    '在清单中，药王山是文旅场景群的空间锚点：场景23在此布设AR打卡点，扫码即可触发孙思邈数字内容与打卡徽章；场景38将其打造为三大研学线路之一的"中医药研学线路"基地。',
+    '以药王山为核心可串联"山上朝圣研学—山下康养民宿—线上虚拟漫游—小程序打卡集章"的立体化体验闭环，是"药王康养旅居"品牌的物理承载。'
+  ],
+  '中医药文化': [
+    '中医药文化是贯穿本清单教育、文旅、AI多领域的底层主题词：场景20线上数字博物馆设中医药精品展区，场景35将中医药纳入进校园课程包，场景38设药王山中医药研学线路。',
+    '铜川的中医药文化以药王孙思邈为灵魂，核心内容包括：千金方医学典籍、大医精诚医德思想、养生方剂等物质与非物质遗产，以及药王山庙会等民俗活动。',
+    '其数据要素化路径为：知识内容→场景05知识图谱→场景15 AI顾问/场景39电子教材→全民共享，是文化资源转化为数据资产的完整样本。'
+  ],
+  '千金方': [
+    '《备急千金要方》与《千金翼方》合称"千金方"，是孙思邈毕生医学经验的集大成之作，载方论数千首，涵盖临床各科与养生学，被誉为中国最早的临床医学百科全书。',
+    '"人命至重，有贵千金，一方济之，德逾于此"——书名即体现其生命至上理念。书中专设"食治""养性""辟谷"等卷，是药王养生知识体系的文献源头。',
+    '对清单而言，千金方是场景05知识图谱最主要的内容矿藏：养生方剂、食疗方案两大知识域均可从千金方中系统挖掘整理，其数字化结构化程度直接决定下游AI服务的知识深度。'
+  ],
+  '大医精诚': [
+    '"大医精诚"出自《备急千金要方》首卷，是孙思邈提出的医德规范："精"指医术精湛，"诚"指医德高尚，被后世尊为中医伦理的基石，相当于中医药界的"希波克拉底誓言"。',
+    '在文化IP打造中，"大医精诚"是药王品牌的精神内核，适用于：进校园课程包的德育内容（场景35）、研学讲解词的价值主线（场景38）、数字人讲解的开篇主题（场景18）。',
+    '其语句简短有力、辨识度高，也适合开发为书法文创、表情包金句（场景22），实现精神内涵的轻量化传播。'
+  ],
+  '治未病': [
+    '"治未病"是中医核心预防理念，即未病先防、既病防变、瘥后防复，与现代"预防医学""健康管理"高度契合，是康养产业的理论旗帜。',
+    '孙思邈在《千金方》中强调"上医医未病之病"，主张通过饮食、起居、导引、情志调摄预防疾病，这与清单场景15智能顾问的服务逻辑完全一致。',
+    '落地映射：体质辨识（发现未病风险）→节气养生（顺时预防）→食疗药膳（日常调理）→穴位按摩（自我保健），四环节构成"治未病"的数字化服务闭环。'
+  ],
+  '药食同源': [
+    '"药食同源"指许多食物兼具药物功效，是国家卫健委发布药食同源目录的政策化概念，也是药膳、养生茶饮产业的合规基础。',
+    '孙思邈是食疗学的奠基人，《千金方·食治》提出"夫为医者，当须先洞晓病源，知其所犯，以食治之；食疗不愈，然后命药"，确立了"先食后药"的原则。',
+    '在清单中，药食同源理念直接支撑食疗药膳（场景05/15）与养生茶饮（场景32）两大产品方向，可结合铜川本地物产（如党参、连翘等道地药材）开发地域特色食谱数据库。'
+  ],
+  '食疗药膳': [
+    '食疗药膳是清单中少有的"双场景高频词"：场景05将其作为知识图谱三大知识域之一进行数据化，场景15将其作为智能顾问的核心服务内容。',
+    '内容体系包括：四季药膳（春养肝、夏养心、秋养肺、冬养肾）、体质药膳（九种体质对应食谱）、常见病调理膳食（如失眠、脾胃虚弱）等。',
+    '产业化路径清晰：知识图谱→AI顾问推荐→民宿养生餐（场景32）→药膳伴手礼（场景33）→直播带货（场景27），是从数据到餐桌的完整价值链。'
+  ],
+  '养生方剂': [
+    '养生方剂知识域整理孙思邈著作中具有养生保健功效的经典方剂，如孔圣枕中丹（益智安神）、千金麦门冬汤等，结构化字段包括方名、出处、组成、制法、功效、宜忌。',
+    '与普通方剂库不同，"养生"定位意味着筛选标准侧重日常调理、延年益寿类方剂，而非急症治疗，更适合面向C端健康人群服务。',
+    '数据化时需注意合规边界：作为文化知识与养生参考提供服务，涉及具体用药须提示遵医嘱，这也是场景08"脱敏处理、可用不可见"流通设计的价值所在。'
+  ],
+  '经络穴位': [
+    '经络穴位是知识图谱三大知识域之一，数据内容包括：十二正经与奇经八脉的循行路线、361个常用穴位的定位、主治、按摩手法与禁忌。',
+    '孙思邈重视针灸，绘制《明堂三人图》是针灸史上的重要图谱，这为经络穴位的"图谱化"表达提供了历史依据。',
+    '下游应用：场景15智能顾问的穴位按摩指导可直接调用该知识域，以图文+动画形式教用户自我按摩；场景40的AR卡片也可延伸至穴位认知教具。'
+  ],
+  '体质辨识': [
+    '体质辨识依据中医体质学说（平和质、气虚质、阳虚质、阴虚质、痰湿质、湿热质、血瘀质、气郁质、特禀质九种），通过问卷问答判断用户体质类型。',
+    '在场景15中，体质辨识是服务入口：用户完成辨识后，系统才据此推送个性化的节气养生建议、药膳方案与穴位处方，即"因人制宜"。',
+    '数据层面，体质辨识结果（脱敏后）是宝贵的健康画像数据，可在场景08可信数据空间内用于养生产品推荐、健康趋势研究，体现"数据要素×健康"的乘数效应。'
+  ],
+  '节气养生': [
+    '节气养生是将二十四节气与中医养生结合的时间医学体系：每个节气有对应的气候特点、易发病、饮食宜忌、起居建议与穴位保健要点。',
+    '孙思邈强调"人与天地相参"，主张顺应四时阴阳变化调摄身心，节气养生正是这一理念的日历化表达。',
+    '运营价值：节气自带时间节奏感，适合做内容运营——小程序（场景19）可按节气推送养生贴士，智能顾问（场景15）可按节气主动关怀，民宿（场景32）可推出节气药膳与茶饮，形成"全年24次用户触达"。'
+  ],
+  '养生茶饮': [
+    '养生茶饮在清单中出现在场景32：培训民宿从业者将养生茶饮融入非遗服务，打造药王主题民宿的标志性体验。',
+    '产品逻辑基于药食同源：如菊花茶清肝明目、枸杞茶滋补肝肾、姜枣茶温中散寒，可依据体质辨识结果提供"一人一方"的茶饮推荐。',
+    '商业延伸：茶饮配方可数据化进入知识图谱，茶包产品可进入文创商城（场景19）与伴手礼体系（场景33），是轻资产、高复购的康养消费品。'
+  ],
+  '传承人数字人': [
+    '场景18采集传承人的声纹与形象，生成可交互数字人，提供7×24小时非遗讲解互动。对药王养生领域而言，这意味着中医药传承人的"数字分身"可永续服务。',
+    '应用场景：部署于线上数字博物馆（场景20）担任虚拟讲解员，嵌入微信小程序（场景19）担任智能客服，或在药王山景区大屏与游客实时互动。',
+    '数据资产角度：数字人依赖场景01的口述史采集与声纹形象数据，其本身也是可确权（场景07）、可授权（场景10）的数据产品。'
+  ],
+  '中医药研学线路': [
+    '场景38打造三条非遗研学线路，药王山中医药线路是其中之一（另两条为陈炉古镇陶艺、宜君剪纸）。',
+    '课程设计可包括：药王山碑林寻踪（识碑认药）、千金方诵读（大医精诚德育课）、药膳制作体验（药食同源实践课）、穴位认知（经络启蒙课）。',
+    '该线路与场景29研学导师认证、场景35课程包、场景39电子教材构成完整研学产品体系，接待收入归入场景29/33的产业带动范畴。'
+  ],
+  '进校园课程包': [
+    '场景35按学段开发非遗课程包，中医药课程是三大方向之一，包含教案、课件、材料包与评价标准，解决"非遗进校园无标准教材"的痛点。',
+    '药王养生主题的学段化设计建议：小学讲药王故事与药材认知，中学讲大医精诚与经络常识，高中讲千金方与传统医学思想。',
+    '课程包可调用场景12开放素材包中的药王图案素材，配套场景40的AR知识卡片作为教具，并由场景36的AI教学助手辅助教师备课。'
+  ],
+  '康养主题民宿': [
+    '场景32打造非遗主题民宿，药王养生方向的核心卖点为：养生茶饮、药膳餐饮、节气康养活动、药王山近郊区位。',
+    '民宿是"康养旅居"闭环的关键一环：白天药王山研学打卡（场景23/38），晚上回民宿品茶药膳、听有声故事（场景21），形成两天一夜的养生微度假产品。',
+    '场景32的民宿管家培训为该产品提供人力支撑，培训内容包括养生茶饮制作、药王文化讲解、非遗体验带领等复合技能。'
+  ],
+  '药王IP文创': [
+    '场景22以药王IP设计数字表情包与壁纸，是药王文化轻量化、社交化传播的入口，让千年药王进入年轻人的聊天界面。',
+    'IP形象体系可延展为：Q版孙思邈（坐虎针龙传说为原型）、药材拟人角色、大医精诚金句书法、节气养生签等视觉资产。',
+    'IP授权链路：设计稿→场景07确权登记→场景10版权授权平台线上授权→场景33伴手礼代加工→场景19商城销售，收益自动分成给IP方与传承人。'
+  ],
+  '线上数字博物馆': [
+    '场景20建设3D/VR线上展厅，中医药精品与耀瓷、剪纸并列为三大展示板块，支持虚拟漫游与语音讲解。',
+    '中医药展厅内容可包括：药王山石刻高清影像、千金方古籍数字化页面、药材标本3D模型、经络穴位交互人体模型等。',
+    '技术复用：场景18传承人数字人可担任展厅讲解员，场景05知识图谱可为展品提供结构化知识标签，实现"看图—问知识—听讲解"一体体验。'
+  ],
+  '微信小程序入口': [
+    '场景19"铜川非遗"微信小程序是全民共享类的一站式入口，整合资讯、智能问答、文创商城、活动报名与打卡集章五大功能。',
+    '对药王养生线而言，小程序是流量总入口：智能问答接入药王养生智能顾问（场景15），商城销售药王IP文创（场景22），报名承接研学活动（场景38），打卡覆盖药王山AR点位（场景23）。',
+    '运营数据（打卡热力、商城销量、问答热点）沉淀后，可反哺场景11数据资产入表，形成"服务—数据—资产"的正循环。'
+  ],
+  '数据确权登记': [
+    '场景07为加工形成的非遗数据集提供确权登记、合规存证与价值评估服务，是数据从"资源"变"资产"的法律前提。',
+    '对孙思邈养生知识图谱而言，确权对象包括：结构化方剂数据、穴位标注数据、知识图谱关系数据等加工成果；古籍原文属公版内容，但整理加工形成的汇编成果可主张权益。',
+    '确权后数据集方可在场景09交易专区挂牌，并通过场景10实现授权收益结算。'
+  ],
+  '可信数据空间': [
+    '场景08搭建非遗数据可信流通空间，核心技术为"可用不可见"：需求方可以调用数据计算（如训练AI、查询知识），但拿不到原始数据，典型技术包括隐私计算、联邦学习、数据沙箱。',
+    '养生数据的敏感性在于：若积累用户体质辨识结果，即构成健康相关个人信息，必须在脱敏后方可流通，可信数据空间正是合规流通的基础设施。',
+    '该场景与场景07确权、场景09交易构成"确权—流通—交易"的数据要素市场三件套。'
+  ],
+  '数据产品交易': [
+    '场景09在数据交易平台开设非遗专区，交易标的包括数据集与API两类：孙思邈养生知识图谱既可整体挂牌，也可封装为"方剂查询API""穴位检索API"按调用计费。',
+    '潜在买方：中医药院校科研机构、康养企业、互联网医疗平台、文创设计公司。',
+    '交易专区同时承担供需对接功能，药企的定制化数据需求（如某类药材的文献整理）可在此发布，由本地数据服务商承接，带动场景31标注就业。'
+  ],
+  '口述史采集': [
+    '场景01以轻量化方式（手机+便携设备）采集传承人口述史、技艺流程与作品影像，形成"一人一档"。',
+    '药王养生线的采集对象：中医药传承人、药王山庙会传承人、药膳制作艺人等，采集内容包括师承脉络、秘方验方口述、诊疗手法影像。',
+    '口述史是知识图谱的"活态补充"——千金方是文献知识，口述史是当代实践经验，二者结合使场景05的知识图谱兼具历史深度与现实温度。'
+  ],
+  '药王山石刻': [
+    '药王山保存北朝至明清历代摩崖造像与碑刻，其中医方碑（刻录验方供民众抄录使用）是"古代医疗知识开源共享"的实物见证，与今日数据要素开放共享理念遥相呼应。',
+    '石刻拓片与高清影像的数字化，可纳入场景03式的图像数据集建设思路，作为中医药文物图像数据集。',
+    '展示端：石刻内容可进入线上数字博物馆（场景20）3D展厅，也可作为AR打卡（场景23）的讲解素材——扫描石刻即可看到碑文释义动画。'
+  ],
+  '有声故事库': [
+    '场景21由传承人讲述非遗故事并制作系列音频，适配通勤、睡前等碎片化收听场景。',
+    '药王题材的故事线：坐虎针龙（孙思邈为虎拔刺、为龙治病的传说）、药王山庙会由来、千金方成书历程、大医精诚的医德故事。',
+    '睡前收听场景与"情志调养""起居养生"理念天然契合，可开发"药王晚安养生故事"专栏，在小程序（场景19）内定时推送。'
+  ],
+  '电商直播': [
+    '场景27建设非遗电商直播培训基地，孵化本地青年成为非遗主播；场景28每月举办传承人直播授艺。',
+    '药王养生线的直播货盘：药膳食材包、养生茶饮、药王IP文创、康养民宿套餐、研学课程名额。',
+    '直播内容可与场景28结合：传承人直播讲解节气养生知识+演示药膳制作，知识引流带动商品转化，实现"内容电商+知识服务"融合。'
+  ],
+  '数据标注就业': [
+    '场景31将非遗图片标注、音频转写等任务开放给本地居民与学生，按件计酬，是数据要素产业带动灵活就业的直接体现。',
+    '药王养生线的标注任务：药材图片标注、穴位图示标注、传承人口述音频转写、方剂文本校对等，专业门槛可通过培训+AI预标注降低。',
+    '该场景与场景05知识图谱建设形成"产业—就业"联动：图谱建设产生标注需求，标注就业沉淀专业人才，人才又反哺图谱质量提升。'
+  ]
+};
+
+/* ══════════════ 图数据 ══════════════ */
+const categories = [
+  { name: '核心主题',   itemStyle: { color: '#7a1f1f' } },
+  { name: '养生知识体系', itemStyle: { color: '#c8842c' } },
+  { name: '数据要素供给', itemStyle: { color: '#3d6b5e' } },
+  { name: 'AI智能服务',  itemStyle: { color: '#2f5d8a' } },
+  { name: '文旅康养场景', itemStyle: { color: '#8a5a9e' } },
+  { name: '教育传承',   itemStyle: { color: '#b0574a' } },
+  { name: '产业带动',   itemStyle: { color: '#6b8e3d' } }
+];
+const catColors = ['#7a1f1f','#c8842c','#3d6b5e','#2f5d8a','#8a5a9e','#b0574a','#6b8e3d'];
+const catIntro = [
+  '药王孙思邈康养养生主题核心。',
+  '药王养生文化的核心知识域，涵盖经典著作、养生方法与中医理念。',
+  '养生知识的数据化、确权化与资产化，对应清单一、二大类场景。',
+  '数据驱动的个性化养生智能服务，对应清单三大类场景。',
+  '以药王山为锚点的康养旅居场景群，对应清单四大类场景。',
+  '中医药养生文化进校园、研学与社区传承，对应清单六大类场景。',
+  '药王IP衍生产业与就业带动，对应清单五大类场景。'
+];
+
+const nodes = [
+  { name: '药王孙思邈\n康养养生', category: 0, symbolSize: 82, value: '核心主题：铜川非遗数据要素化最具辨识度的人物IP，"药王故里"文化名片',
+    label: { fontSize: 18, fontWeight: 'bold', color: '#fff' } },
+  { name: '养生知识体系', category: 1, symbolSize: 54, value: '药王养生文化的核心知识域：经典著作+养生方法+中医理念', label:{fontSize:14,fontWeight:'bold'} },
+  { name: '数据要素供给', category: 2, symbolSize: 50, value: '养生知识的数据化、确权化与资产化', label:{fontSize:14,fontWeight:'bold'} },
+  { name: 'AI智能服务',   category: 3, symbolSize: 50, value: '数据驱动的个性化养生智能服务', label:{fontSize:14,fontWeight:'bold'} },
+  { name: '文旅康养场景', category: 4, symbolSize: 50, value: '药王山康养旅居场景群', label:{fontSize:14,fontWeight:'bold'} },
+  { name: '教育传承',     category: 5, symbolSize: 46, value: '中医药养生文化进校园、研学与社区传承', label:{fontSize:14,fontWeight:'bold'} },
+  { name: '产业带动',     category: 6, symbolSize: 46, value: '药王IP衍生产业与就业带动', label:{fontSize:14,fontWeight:'bold'} },
+
+  { name: '养生方剂', category: 1, symbolSize: 34, value: '场景05：结构化整理孙思邈养生方剂，知识图谱三大知识域之一' },
+  { name: '食疗药膳', category: 1, symbolSize: 38, value: '场景05/15：食疗方案与药膳指导，双场景高频词' },
+  { name: '经络穴位', category: 1, symbolSize: 34, value: '场景05：经络穴位知识结构化，知识图谱三大知识域之一' },
+  { name: '节气养生', category: 1, symbolSize: 32, value: '场景15：顺应二十四节气的养生指导服务' },
+  { name: '体质辨识', category: 1, symbolSize: 34, value: '场景15：中医九种体质辨识，个性化养生服务入口' },
+  { name: '穴位按摩', category: 1, symbolSize: 30, value: '场景15：穴位按摩自助保健指导' },
+  { name: '养生茶饮', category: 1, symbolSize: 30, value: '场景32：融入民宿服务的药王养生茶饮' },
+  { name: '中医药文化', category: 1, symbolSize: 38, value: '场景20/35/38：贯穿展陈、课程与研学的底层文化，全单最高频主题词' },
+  { name: '千金方', category: 1, symbolSize: 30, value: '延伸词：《备急千金要方》《千金翼方》，孙思邈传世巨著，知识图谱内容源头' },
+  { name: '大医精诚', category: 1, symbolSize: 28, value: '延伸词：孙思邈医德思想核心，中医药文化课程的精神内核' },
+  { name: '治未病', category: 1, symbolSize: 28, value: '延伸词：中医"未病先防"理念，节气养生与体质辨识的理论基础' },
+  { name: '药食同源', category: 1, symbolSize: 26, value: '延伸词：食疗药膳的理论依据，养生茶饮开发逻辑' },
+  { name: '导引吐纳', category: 1, symbolSize: 24, value: '延伸词：孙思邈养生功法，动作捕捉（场景02）可延伸方向' },
+  { name: '针灸推拿', category: 1, symbolSize: 24, value: '延伸词：与经络穴位知识配套的技法体系' },
+  { name: '情志调养', category: 1, symbolSize: 22, value: '延伸词：心理情志养生，睡前有声故事（场景21）的结合点' },
+  { name: '起居养生', category: 1, symbolSize: 22, value: '延伸词：作息起居养生法，康养民宿服务的知识支撑' },
+
+  { name: '孙思邈养生\n知识图谱', category: 2, symbolSize: 42, value: '场景05：清单中唯一以人物IP命名的数据集，养生数据要素化核心' },
+  { name: '结构化标注', category: 2, symbolSize: 28, value: '场景05：方剂/食疗/穴位知识的结构化加工，标注就业（场景31）的任务来源' },
+  { name: '数据确权登记', category: 2, symbolSize: 28, value: '场景07：养生数据集的知识产权登记、合规存证与价值评估' },
+  { name: '可信数据空间', category: 2, symbolSize: 28, value: '场景08：养生数据"可用不可见"授权流通与脱敏处理' },
+  { name: '数据产品交易', category: 2, symbolSize: 28, value: '场景09：知识图谱、API在非遗专区挂牌与供需对接' },
+  { name: '数据资产入表', category: 2, symbolSize: 26, value: '场景11：养生数据资产盘点、评估与入表咨询' },
+  { name: '口述史采集', category: 2, symbolSize: 26, value: '场景01：中医药传承人口述史、技艺流程轻量化采集建档' },
+  { name: '版权授权结算', category: 2, symbolSize: 26, value: '场景10：药王IP影像音乐数字版权线上授权与收益自动分成' },
+  { name: 'API数据服务', category: 2, symbolSize: 24, value: '场景09：养生知识以API形式挂牌，供智能顾问等调用' },
+  { name: '开放素材包', category: 2, symbolSize: 24, value: '场景12：药王养生图案素材向教育、社区免费或低价开放' },
+  { name: '动作捕捉采集', category: 2, symbolSize: 24, value: '场景02：导引功法类技艺动作捕捉，标准化动作数据集' },
+
+  { name: '药王养生\n智能顾问', category: 3, symbolSize: 42, value: '场景15：个性化养生服务核心AI载体，知识图谱的直接下游' },
+  { name: '个性化养生服务', category: 3, symbolSize: 30, value: '场景15：基于体质辨识的"千人千方"服务输出' },
+  { name: '多轮问答', category: 3, symbolSize: 26, value: '场景13/15：智能顾问的核心交互形态' },
+  { name: '传承人数字人', category: 3, symbolSize: 30, value: '场景18：声纹+形象采集生成，7×24小时讲解中医药养生知识' },
+  { name: '语音讲解', category: 3, symbolSize: 24, value: '场景18/20：数字人与线上展厅的语音服务形态' },
+  { name: '智能问答助手', category: 3, symbolSize: 26, value: '场景13：知识库问答能力可复用至中医药领域' },
+  { name: 'AI教学助手', category: 3, symbolSize: 26, value: '场景36：辅助中医药课程备课、答疑与作品点评' },
+  { name: '智能体工具应用', category: 3, symbolSize: 24, value: '场景34：从业者数字技能微课的核心内容' },
+  { name: '图片识别', category: 3, symbolSize: 22, value: '场景13：图片识器能力可延伸至药材、穴位识别' },
+
+  { name: '药王山', category: 4, symbolSize: 42, value: '场景23/38：药王文化物理承载地，康养旅居场景群核心' },
+  { name: 'AR打卡', category: 4, symbolSize: 28, value: '场景23：药王山AR打卡点扫码触发数字内容与徽章' },
+  { name: '线上数字博物馆', category: 4, symbolSize: 30, value: '场景20：3D/VR展厅展示中医药精品' },
+  { name: '康养主题民宿', category: 4, symbolSize: 30, value: '场景32：养生茶饮+非遗服务的药王主题民宿' },
+  { name: '虚拟漫游', category: 4, symbolSize: 24, value: '场景20：线上沉浸式游览药王文化空间' },
+  { name: '打卡集章', category: 4, symbolSize: 24, value: '场景19：小程序内药王山打卡集章玩法' },
+  { name: '药王山石刻', category: 4, symbolSize: 26, value: '延伸词：药王山摩崖石刻与医方碑，数字化采集与展示对象' },
+  { name: '数字地图导览', category: 4, symbolSize: 26, value: '场景24：标注工坊、工作室与体验空间，支持预约导览' },
+  { name: '非遗工坊体验', category: 4, symbolSize: 26, value: '场景24/30：养生香囊、药膳制作等体验空间' },
+  { name: '有声故事库', category: 4, symbolSize: 26, value: '场景21：药王故事系列音频，适配通勤、睡前场景' },
+  { name: '微信小程序入口', category: 4, symbolSize: 28, value: '场景19：一站式非遗体验入口，整合问答、商城、报名、打卡' },
+  { name: '社区文化角', category: 4, symbolSize: 24, value: '场景25：社区与交通枢纽的养生文化展示墙与互动屏' },
+
+  { name: '中医药研学线路', category: 5, symbolSize: 34, value: '场景38：药王山中医药研学实践基地，三大研学线路之一' },
+  { name: '进校园课程包', category: 5, symbolSize: 30, value: '场景35：按学段开发的中医药课程，含教案课件与评价标准' },
+  { name: '研学导师认证', category: 5, symbolSize: 26, value: '场景29：导游、教师、大学生认证后承接药王山研学接待' },
+  { name: '互动电子教材', category: 5, symbolSize: 26, value: '场景39：视频演示+动画讲解+虚拟体验的平板教材' },
+  { name: '传承人数字档案', category: 5, symbolSize: 26, value: '场景01：中医药养生传承人"一人一档"数字档案' },
+  { name: 'AR知识卡片', category: 5, symbolSize: 24, value: '场景40：扫码观看技艺分解动效的小学课堂教具' },
+  { name: '学生创作大赛', category: 5, symbolSize: 24, value: '场景37：中小学生非遗创作大赛与线上作品展示' },
+  { name: '直播授艺课堂', category: 5, symbolSize: 26, value: '场景28：传承人月度直播授艺并沉淀教学视频' },
+  { name: '社区工坊教学', category: 5, symbolSize: 24, value: '场景30：面向留守妇女、残疾人的技艺就业培训' },
+  { name: '数字技能微课', category: 5, symbolSize: 24, value: '场景34：短视频微课提升从业者智能工具应用能力' },
+
+  { name: '药王IP文创', category: 6, symbolSize: 34, value: '场景22：表情包、壁纸等药王IP轻量化传播载体' },
+  { name: '文创商城', category: 6, symbolSize: 26, value: '场景19：小程序内药王养生文创交易板块' },
+  { name: '民宿管家培训', category: 6, symbolSize: 28, value: '场景32：民宿从业者融入养生茶饮等非遗服务的技能培训' },
+  { name: '伴手礼代加工', category: 6, symbolSize: 26, value: '场景33：小微企业承接药王养生主题伴手礼代加工订单' },
+  { name: '电商直播', category: 6, symbolSize: 26, value: '场景27：非遗主播孵化与养生文创直播带货' },
+  { name: '数据标注就业', category: 6, symbolSize: 26, value: '场景31：养生图片标注、音频转写按件计酬的灵活就业' },
+  { name: '短视频创作', category: 6, symbolSize: 24, value: '场景27：本地青年成为药王文化短视频创作者' },
+  { name: '数字表情包壁纸', category: 6, symbolSize: 24, value: '场景22：基于药王IP的社交传播素材' },
+  { name: '研学接待服务', category: 6, symbolSize: 24, value: '场景29/38：认证导师承接研学团队的服务收入' },
+  { name: '工坊订单生产', category: 6, symbolSize: 24, value: '场景30：社区工坊承接养生文创订单生产' }
+];
+
+const L = (s, t, w) => ({ source: s, target: t, lineStyle: w ? { curveness: 0.3, type: 'dashed', width: w } : { curveness: 0.3, type: 'dashed' } });
+const links = [
+  { source: '药王孙思邈\n康养养生', target: '养生知识体系' },
+  { source: '药王孙思邈\n康养养生', target: '数据要素供给' },
+  { source: '药王孙思邈\n康养养生', target: 'AI智能服务' },
+  { source: '药王孙思邈\n康养养生', target: '文旅康养场景' },
+  { source: '药王孙思邈\n康养养生', target: '教育传承' },
+  { source: '药王孙思邈\n康养养生', target: '产业带动' },
+  { source: '养生知识体系', target: '养生方剂' }, { source: '养生知识体系', target: '食疗药膳' },
+  { source: '养生知识体系', target: '经络穴位' }, { source: '养生知识体系', target: '节气养生' },
+  { source: '养生知识体系', target: '体质辨识' }, { source: '养生知识体系', target: '穴位按摩' },
+  { source: '养生知识体系', target: '养生茶饮' }, { source: '养生知识体系', target: '中医药文化' },
+  { source: '养生知识体系', target: '千金方' }, { source: '养生知识体系', target: '大医精诚' },
+  { source: '养生知识体系', target: '治未病' }, { source: '养生知识体系', target: '药食同源' },
+  { source: '养生知识体系', target: '导引吐纳' }, { source: '养生知识体系', target: '针灸推拿' },
+  { source: '养生知识体系', target: '情志调养' }, { source: '养生知识体系', target: '起居养生' },
+  { source: '数据要素供给', target: '孙思邈养生\n知识图谱' }, { source: '数据要素供给', target: '结构化标注' },
+  { source: '数据要素供给', target: '数据确权登记' }, { source: '数据要素供给', target: '可信数据空间' },
+  { source: '数据要素供给', target: '数据产品交易' }, { source: '数据要素供给', target: '数据资产入表' },
+  { source: '数据要素供给', target: '口述史采集' }, { source: '数据要素供给', target: '版权授权结算' },
+  { source: '数据要素供给', target: 'API数据服务' }, { source: '数据要素供给', target: '开放素材包' },
+  { source: '数据要素供给', target: '动作捕捉采集' },
+  { source: 'AI智能服务', target: '药王养生\n智能顾问' }, { source: 'AI智能服务', target: '个性化养生服务' },
+  { source: 'AI智能服务', target: '多轮问答' }, { source: 'AI智能服务', target: '传承人数字人' },
+  { source: 'AI智能服务', target: '语音讲解' }, { source: 'AI智能服务', target: '智能问答助手' },
+  { source: 'AI智能服务', target: 'AI教学助手' }, { source: 'AI智能服务', target: '智能体工具应用' },
+  { source: 'AI智能服务', target: '图片识别' },
+  { source: '文旅康养场景', target: '药王山' }, { source: '文旅康养场景', target: 'AR打卡' },
+  { source: '文旅康养场景', target: '线上数字博物馆' }, { source: '文旅康养场景', target: '康养主题民宿' },
+  { source: '文旅康养场景', target: '虚拟漫游' }, { source: '文旅康养场景', target: '打卡集章' },
+  { source: '文旅康养场景', target: '药王山石刻' }, { source: '文旅康养场景', target: '数字地图导览' },
+  { source: '文旅康养场景', target: '非遗工坊体验' }, { source: '文旅康养场景', target: '有声故事库' },
+  { source: '文旅康养场景', target: '微信小程序入口' }, { source: '文旅康养场景', target: '社区文化角' },
+  { source: '教育传承', target: '中医药研学线路' }, { source: '教育传承', target: '进校园课程包' },
+  { source: '教育传承', target: '研学导师认证' }, { source: '教育传承', target: '互动电子教材' },
+  { source: '教育传承', target: '传承人数字档案' }, { source: '教育传承', target: 'AR知识卡片' },
+  { source: '教育传承', target: '学生创作大赛' }, { source: '教育传承', target: '直播授艺课堂' },
+  { source: '教育传承', target: '社区工坊教学' }, { source: '教育传承', target: '数字技能微课' },
+  { source: '产业带动', target: '药王IP文创' }, { source: '产业带动', target: '文创商城' },
+  { source: '产业带动', target: '民宿管家培训' }, { source: '产业带动', target: '伴手礼代加工' },
+  { source: '产业带动', target: '电商直播' }, { source: '产业带动', target: '数据标注就业' },
+  { source: '产业带动', target: '短视频创作' }, { source: '产业带动', target: '数字表情包壁纸' },
+  { source: '产业带动', target: '研学接待服务' }, { source: '产业带动', target: '工坊订单生产' },
+
+  L('千金方', '孙思邈养生\n知识图谱', 2), L('千金方', '养生方剂'), L('千金方', '食疗药膳'),
+  L('大医精诚', '中医药文化'), L('治未病', '节气养生'), L('治未病', '体质辨识'),
+  L('药食同源', '食疗药膳'), L('药食同源', '养生茶饮'), L('导引吐纳', '动作捕捉采集'),
+  L('针灸推拿', '经络穴位'), L('情志调养', '有声故事库'), L('起居养生', '康养主题民宿'),
+  L('孙思邈养生\n知识图谱', '药王养生\n智能顾问', 2), L('孙思邈养生\n知识图谱', 'API数据服务'),
+  L('API数据服务', '药王养生\n智能顾问'), L('结构化标注', '孙思邈养生\n知识图谱'),
+  L('孙思邈养生\n知识图谱', '数据产品交易'), L('孙思邈养生\n知识图谱', '数据确权登记'),
+  L('数据确权登记', '版权授权结算'), L('可信数据空间', '数据产品交易'),
+  L('口述史采集', '传承人数字档案', 2), L('口述史采集', '传承人数字人'), L('传承人数字档案', '传承人数字人'),
+  L('药王养生\n智能顾问', '体质辨识', 2), L('药王养生\n智能顾问', '节气养生'),
+  L('药王养生\n智能顾问', '穴位按摩'), L('药王养生\n智能顾问', '食疗药膳'),
+  L('药王养生\n智能顾问', '多轮问答'), L('传承人数字人', '语音讲解'),
+  L('智能问答助手', '多轮问答'), L('AI教学助手', '进校园课程包'),
+  L('图片识别', '药王养生\n智能顾问'), L('智能体工具应用', '数字技能微课'),
+  L('药王山', '中医药研学线路', 2), L('药王山', 'AR打卡'), L('药王山', '药王山石刻'),
+  L('药王山', '数字地图导览'), L('药王山石刻', '线上数字博物馆'), L('线上数字博物馆', '虚拟漫游'),
+  L('线上数字博物馆', '中医药文化'), L('微信小程序入口', '打卡集章'), L('微信小程序入口', '文创商城', 2),
+  L('微信小程序入口', '药王养生\n智能顾问'), L('AR打卡', '打卡集章'), L('数字地图导览', '非遗工坊体验'),
+  L('康养主题民宿', '养生茶饮', 2), L('康养主题民宿', '民宿管家培训'), L('康养主题民宿', '起居养生'),
+  L('民宿管家培训', '研学接待服务'), L('药王IP文创', '数字表情包壁纸'), L('药王IP文创', '电商直播'),
+  L('药王IP文创', '版权授权结算'), L('药王IP文创', '伴手礼代加工'), L('文创商城', '伴手礼代加工'),
+  L('电商直播', '短视频创作'), L('直播授艺课堂', '电商直播'), L('数据标注就业', '结构化标注'),
+  L('社区工坊教学', '工坊订单生产'), L('开放素材包', '进校园课程包'), L('开放素材包', '社区文化角'),
+  L('中医药文化', '进校园课程包'), L('中医药文化', '中医药研学线路'), L('进校园课程包', '互动电子教材'),
+  L('进校园课程包', 'AR知识卡片'), L('进校园课程包', '学生创作大赛'), L('研学导师认证', '研学接待服务'),
+  L('非遗工坊体验', '社区工坊教学'), L('有声故事库', '微信小程序入口'), L('传承人数字人', '线上数字博物馆'),
+  L('中医药研学线路', '研学导师认证')
+];
+
+/* ══════════════ 图表渲染 ══════════════ */
+const chart = echarts.init(document.getElementById('graph'));
+chart.setOption({
+  backgroundColor: 'transparent',
+  tooltip: {
+    backgroundColor: 'rgba(60,40,20,.92)',
+    borderColor: '#c8a86b',
+    textStyle: { color: '#f7ecd7', fontSize: 13 },
+    formatter: p => p.dataType === 'node'
+      ? `<b style="color:#ffd98e">${p.name.replace(/\n/g,'')}</b><br>${p.data.value || ''}<br><span style="color:#8fd0ff">点击查看详情 →</span>`
+      : `${p.data.source.replace(/\n/g,'')} → ${p.data.target.replace(/\n/g,'')}`
+  },
+  series: [{
+    type: 'graph', layout: 'force',
+    categories, data: nodes, links,
+    roam: true, draggable: true, zoom: 0.85, center: ['50%', '50%'],
+    force: { repulsion: 520, edgeLength: [55, 140], gravity: 0.1, friction: 0.22 },
+    label: { show: true, position: 'inside', fontSize: 11, color: '#fff', lineHeight: 14, formatter: '{b}' },
+    itemStyle: { borderColor: 'rgba(255,250,235,.85)', borderWidth: 2, shadowBlur: 12, shadowColor: 'rgba(90,60,20,.35)' },
+    lineStyle: { color: '#b89a6a', width: 1.3, opacity: 0.7, curveness: 0.12 },
+    emphasis: { focus: 'adjacency', lineStyle: { width: 3, opacity: 1 }, label: { fontWeight: 'bold' } }
+  }]
+});
+window.addEventListener('resize', () => chart.resize());
+
+/* ══════════════ 邻接关系 ══════════════ */
+const adjacency = {};
+links.forEach(l => {
+  (adjacency[l.source] = adjacency[l.source] || new Set()).add(l.target);
+  (adjacency[l.target] = adjacency[l.target] || new Set()).add(l.source);
+});
+const nodeMap = {};
+nodes.forEach(n => nodeMap[n.name] = n);
+
+/* ══════════════ 详情页逻辑 ══════════════ */
+let navStack = [];
+
+function extractScenes(text) {
+  const ids = new Set();
+  const m = text.match(/场景[\d\/、]+/g) || [];
+  m.forEach(seg => seg.replace('场景','').split(/[\/、]/).forEach(id => { if (scenes[id]) ids.add(id); }));
+  return [...ids];
+}
+
+function openDetail(name, push = true) {
+  const n = nodeMap[name];
+  if (!n) return;
+  if (push) navStack.push(name);
+  const plain = name.replace(/\n/g, '');
+  const catIdx = n.category;
+
+  document.getElementById('dCrumb').textContent =
+    `药王孙思邈康养养生热词关联图 / ${categories[catIdx].name} / ${plain}`;
+  document.getElementById('dTitle').textContent = plain;
+  const badge = document.getElementById('dBadge');
+  badge.textContent = categories[catIdx].name;
+  badge.style.background = catColors[catIdx];
+
+  document.getElementById('dBrief').innerHTML =
+    `<p style="margin-bottom:8px">${n.value || ''}</p>
+     <p style="font-size:13px;color:#a68a5b">所属热词簇：${categories[catIdx].name} — ${catIntro[catIdx]}</p>`;
+
+  // 详细解读
+  const more = moreDetails[name];
+  const moreSec = document.getElementById('dMoreSec');
+  if (more) {
+    moreSec.style.display = 'block';
+    document.getElementById('dMore').innerHTML = more.map(p => `<p>${p}</p>`).join('');
+  } else moreSec.style.display = 'none';
+
+  // 场景溯源
+  const scIds = extractScenes(n.value || '');
+  const scSec = document.getElementById('dSceneSec');
+  if (scIds.length) {
+    scSec.style.display = 'block';
+    document.getElementById('dScenes').innerHTML = scIds.map(id => {
+      const s = scenes[id];
+      return `<div class="scene-card">
+        <span class="no">场景 ${id}</span><span class="nm">${s.name}</span>
+        <div class="ds">${s.desc}</div>
+        <div class="cat">${s.cat} · 《铜川市数据要素场景机会清单》</div>
+      </div>`;
+    }).join('');
+  } else scSec.style.display = 'none';
+
+  // 相关热词
+  const rel = [...(adjacency[name] || [])].filter(x => nodeMap[x]);
+  document.getElementById('dRelated').innerHTML = rel.map(x =>
+    `<span class="rel-chip" onclick="openDetail('${x.replace(/'/g,"\\'")}')">
+       <span class="dot" style="background:${catColors[nodeMap[x].category]};display:inline-block"></span>
+       ${x.replace(/\n/g,'')}</span>`
+  ).join('') || '<span style="color:#9a8465;font-size:13px">无</span>';
+
+  // 外部链接
+  const ext = [
+    { label: '🗺️ 药王山景区信息', url: `https://cn.bing.com/search?q=${encodeURIComponent('铜川 药王山景区')}`, cls: '' }
+  ];
+  document.getElementById('dExt').innerHTML = ext.map(e =>
+    `<a class="btn ${e.cls}" href="${e.url}" target="_blank" rel="noopener">${e.label}</a>`
+  ).join('');
+
+  document.getElementById('detailView').classList.add('show');
+  document.getElementById('detailView').scrollTop = 0;
+  location.hash = 'w=' + encodeURIComponent(name);
+}
+
+function closeDetail() {
+  document.getElementById('detailView').classList.remove('show');
+  history.replaceState(null, '', location.pathname);
+}
+function historyBack() {
+  navStack.pop();
+  const prev = navStack.pop();
+  if (prev) openDetail(prev); else closeDetail();
+}
+function copyLink() {
+  navigator.clipboard.writeText(location.href).then(() => alert('链接已复制，可直接分享定位到本热词详情页'));
+}
+
+chart.on('click', p => { if (p.dataType === 'node') openDetail(p.name); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
+
+/* ══════════════ 索引搜索 ══════════════ */
+const idxList = document.getElementById('indexList');
+function renderIndex(filter = '') {
+  idxList.innerHTML = nodes
+    .filter(n => !filter || n.name.replace(/\n/g,'').includes(filter))
+    .map(n => `<div class="idx-item" onclick="openDetail('${n.name.replace(/'/g,"\\'")}')">
+      <span class="dot" style="background:${catColors[n.category]}"></span>${n.name.replace(/\n/g,'')}</div>`)
+    .join('');
+}
+document.getElementById('searchBox').addEventListener('input', e => renderIndex(e.target.value.trim()));
+renderIndex();
+
+/* ══════════════ URL锚点直达 ══════════════ */
+(function () {
+  const m = location.hash.match(/#w=(.+)/);
+  if (m) {
+    const name = decodeURIComponent(m[1]);
+    if (nodeMap[name]) setTimeout(() => openDetail(name, false), 300);
+  }
+})();
+</script>
+</body>
+</html>
